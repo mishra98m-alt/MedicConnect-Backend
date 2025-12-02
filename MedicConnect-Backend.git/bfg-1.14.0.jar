@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist</Message><BucketName>r2-public-binaries</BucketName><RequestId>1ZPQF1QRZV6VPJW7</RequestId><HostId>Fu+6I7ttHOaxEiXCjLbOtgOpVqp4QE1oBDM2eOoQ3xTowcg3bO8vbtmi0kbRratjJO6PiKBCBWM=</HostId></Error>
