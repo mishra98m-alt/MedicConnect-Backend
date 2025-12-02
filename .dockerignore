@@ -1,0 +1,7 @@
+target
+modules/*/target
+logs
+.git
+.gitignore
+node_modules
+*.log

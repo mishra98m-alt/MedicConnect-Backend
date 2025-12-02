@@ -1,0 +1,67 @@
+version: '3.3'
+
+services:
+  # ---------------------------------------------
+  # MedicConnect Database (Separate from OpenMRS)
+  # ---------------------------------------------
+  mc_mysql:
+    image: mysql:8.0
+    container_name: mc_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: medicconnect
+      TZ: Asia/Kolkata
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mc_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------
+  # MedicConnect Backend App
+  # -------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicconnect-backend
+    restart: always
+    depends_on:
+      mc_mysql:
+        condition: service_healthy
+
+    environment:
+      # MedicConnect DB
+      SPRING_DATASOURCE_URL: jdbc:mysql://mc_mysql:3306/medicconnect?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+
+      # ---- OpenMRS Settings ----
+      OPENMRS_BASE_URL: http://host.docker.internal:8081/openmrs/ws/rest/v1
+      OPENMRS_FHIR_BASE: http://host.docker.internal:8081/openmrs/ws/fhir2/R4
+      OPENMRS_USERNAME: admin
+      OPENMRS_PASSWORD: Admin123
+
+      # REQUIRED UUIDs for OpenMRS integration
+      OPENMRS_DEFAULT_LOCATION_UUID: b1a8e617-c1f3-4f2f-b673-d8b61a1e44c2
+      OPENMRS_DEFAULT_IDENTIFIER_TYPE_UUID: 1a339fe2-14a6-4ade-8d41-ae0bf301f25a
+
+      # Enable the OpenMRS profile
+      SPRING_PROFILES_ACTIVE: openmrs
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ./logs:/var/log/medicconnect
+
+volumes:
+  mc_mysql_data:

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.22.xsd">
+
+    <!-- If you want explicit sequences (MySQL typically uses AUTO_INCREMENT),
+         this changeSet creates a helper table for sequence-like counters.
+         Adjust or remove if you prefer native auto_increment. -->
+
+    <changeSet id="1-create-id-sequences" author="medicconnect">
+        <createTable tableName="id_sequences">
+            <column name="name" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="next_val" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- seed a sequence used by legacy code if needed -->
+        <insert tableName="id_sequences">
+            <column name="name" value="documents_seq"/>
+            <column name="next_val" valueNumeric="1"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

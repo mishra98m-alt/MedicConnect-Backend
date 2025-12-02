@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.22.xsd">
+
+    <changeSet id="1-create-prefilled-tokens" author="medicconnect">
+        <createTable tableName="prefilled_tokens">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="token" type="VARCHAR(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(50)"/>
+            <column name="expires_at" type="DATETIME"/>
+            <column name="created_at" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_by" type="BIGINT"/>
+        </createTable>
+
+        <createIndex tableName="prefilled_tokens" indexName="idx_prefilled_tokens_token">
+            <column name="token"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Example seeded token(s). Remove or change for production. -->
+    <changeSet id="2-insert-example-token" author="medicconnect">
+        <insert tableName="prefilled_tokens">
+            <column name="token" value="sample-token-12345"/>
+            <column name="type" value="invitation"/>
+            <column name="expires_at" valueDate="2099-12-31T23:59:59"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

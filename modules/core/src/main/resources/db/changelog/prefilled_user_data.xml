@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.22.xsd">
+
+    <changeSet id="1-create-users" author="medicconnect">
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(150)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(512)"/>
+            <column name="person_id" type="BIGINT"/>
+            <column name="roles" type="VARCHAR(255)"/>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"/>
+            <column name="created_at" type="DATETIME" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="users"
+                                 baseColumnNames="person_id"
+                                 referencedTableName="person"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_users_person"/>
+
+        <createIndex tableName="users" indexName="idx_users_username">
+            <column name="username"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Seed an admin user (password_hash is placeholder) -->
+    <changeSet id="2-insert-admin-user" author="medicconnect">
+        <insert tableName="users">
+            <column name="username" value="admin"/>
+            <!-- Replace this hashed password with an actual bcrypt/argon2 hash in production -->
+            <column name="password_hash" value="$2y$12$exampleplaceholderhash000000000000000000000000000"/>
+            <column name="roles" value="ROLE_ADMIN"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
