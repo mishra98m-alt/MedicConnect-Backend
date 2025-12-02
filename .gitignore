@@ -10,3 +10,4 @@
 logs/
 # OS
 .DS_Store
+modules/core/target/
