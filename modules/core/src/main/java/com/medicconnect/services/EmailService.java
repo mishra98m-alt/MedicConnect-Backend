@@ -299,10 +299,7 @@ public class EmailService {
     // ---------------------------------------------------------
     public String generatePreFilledRegistrationEmail(PersonDTO dto, String token) {
 
-        String registrationLink =
-                token.startsWith("http")
-                        ? token
-                        : "http://10.5.48.251:8081/#/register?token=" + token;
+        String registrationLink = token; 
 
         String body = """
             <p>Hello <strong>%s</strong>,</p>

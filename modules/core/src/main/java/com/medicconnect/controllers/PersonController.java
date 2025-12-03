@@ -10,6 +10,7 @@ import com.medicconnect.utils.ResponseUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.medicconnect.utils.PrefilledLinkBuilder;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,6 +31,9 @@ public class PersonController {
 
     @Autowired
     private PrefilledUserDataService prefilledUserDataService;
+
+    @Autowired
+    private PrefilledLinkBuilder prefilledLinkBuilder;
 
     public PersonController(PersonService personService,
                             OrganizationService organizationService,
@@ -141,8 +145,8 @@ public class PersonController {
             }
 
             prefilledUserDataService.savePrefilledUserData(data);
-
-            String prefilledLink = "http://10.5.48.70:8081/register=" + token;
+            
+            String prefilledLink = prefilledLinkBuilder.buildLink(token);
 
             // Send email
             PersonDTO dto = new PersonDTO();
@@ -171,7 +175,7 @@ public class PersonController {
     // 📋 Fetch Prefilled Data
     // --------------------------------------------------------------------
     @GetMapping("/register/user/fetch")
-    public ResponseEntity<Map<String, Object>> fetchPreFilledUser(@RequestParam String token) {
+    public ResponseEntity<Map<String, Object>> fetchPreFilledUser(@RequestParam("token") String token) {
         try {
             if (!prefilledTokenService.isTokenValid(token)) {
                 return ResponseEntity.badRequest().body(ResponseUtils.error("Invalid or expired token"));
@@ -205,8 +209,8 @@ public class PersonController {
     // --------------------------------------------------------------------
     @PostMapping("/register/user/complete")
     public ResponseEntity<Map<String, Object>> completePreFilledRegistration(
-            @RequestParam String token,
-            @RequestBody Map<String, Object> userInput
+           @RequestParam("token") String token,
+           @RequestBody Map<String, Object> userInput
     ) {
         try {
             if (!prefilledTokenService.isTokenValid(token)) {
