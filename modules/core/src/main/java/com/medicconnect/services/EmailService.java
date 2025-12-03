@@ -302,7 +302,7 @@ public class EmailService {
         String registrationLink =
                 token.startsWith("http")
                         ? token
-                        : "http://10.5.48.251:8080/#/candidateform?" + token;
+                        : "http://10.5.48.251:8081/#/register?token=" + token;
 
         String body = """
             <p>Hello <strong>%s</strong>,</p>
