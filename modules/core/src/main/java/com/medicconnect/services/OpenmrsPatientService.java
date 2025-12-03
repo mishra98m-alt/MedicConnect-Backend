@@ -1,72 +1,68 @@
 package com.medicconnect.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.medicconnect.api.OpenmrsApiClient;
 import com.medicconnect.config.OpenmrsConfig;
+import com.medicconnect.dto.OpenmrsPatientPayload;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 @Service
 public class OpenmrsPatientService {
 
     private final OpenmrsApiClient api;
     private final OpenmrsConfig config;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public OpenmrsPatientService(OpenmrsApiClient api, OpenmrsConfig config) {
         this.api = api;
         this.config = config;
     }
 
-    /**
-     * Create a new patient in OpenMRS
-     */
-    public JsonNode createPatient(String firstName, String lastName, String gender, String birthdate) throws Exception {
+    public String createPatient(OpenmrsPatientPayload payload) throws Exception {
 
-        // -----------------------------
-        // Name object
-        // -----------------------------
-        Map<String, Object> name = new HashMap<>();
-        name.put("givenName", firstName);
-        name.put("familyName", lastName);
+        // -----------------------------------------------------
+        // Build PERSON JSON (OpenMRS format)
+        // -----------------------------------------------------
+        ObjectNode person = mapper.createObjectNode();
+        person.put("gender", payload.getGender());
+        person.put("birthdate", payload.getBirthdate());
+        person.put("birthdateEstimated", payload.isBirthdateEstimated());
 
-        List<Map<String, Object>> namesList = List.of(name);
+        // Names --> [{"givenName": "...", "familyName": "..."}]
+        person.set("names", mapper.valueToTree(payload.getNames()));
 
-        // -----------------------------
-        // Person section
-        // -----------------------------
-        Map<String, Object> person = new HashMap<>();
-        person.put("gender", gender);
-        person.put("birthdate", birthdate);
-        person.put("names", namesList);
+        // Addresses --> [{"address1": "...", "cityVillage": "..."}]
+        person.set("addresses", mapper.valueToTree(payload.getAddresses()));
 
-        // -----------------------------
-        // Identifier (TEMPORARY generator)
-        // -----------------------------
-        Map<String, Object> identifier = new HashMap<>();
-        identifier.put("identifier", generateIdentifier());
-        identifier.put("identifierType", config.getDefaultIdentifierTypeUuid());
-        identifier.put("location", config.getDefaultLocationUuid());
-        identifier.put("preferred", true);
+        // -----------------------------------------------------
+        // IDENTIFIERS LIST — ensure preferred + correct fields
+        // -----------------------------------------------------
+        JsonNode identifiers = mapper.valueToTree(payload.getIdentifiers());
 
-        List<Map<String, Object>> identifiersList = List.of(identifier);
+        // Add "preferred" if missing
+        identifiers.forEach(id -> {
+            if (!id.has("preferred")) {
+                ((ObjectNode) id).put("preferred", true);
+            }
+        });
 
-        // -----------------------------
-        // Final OpenMRS payload
-        // -----------------------------
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("person", person);
-        payload.put("identifiers", identifiersList);
+        // -----------------------------------------------------
+        // FINAL PATIENT OBJECT
+        // -----------------------------------------------------
+        ObjectNode request = mapper.createObjectNode();
+        request.set("person", person);
+        request.set("identifiers", identifiers);
 
-        return api.post("/patient", payload);
-    }
+        // -----------------------------------------------------
+        // SEND TO OPENMRS (correct endpoint!)
+        // -----------------------------------------------------
+        JsonNode response = api.post("/patient/", request);
 
+        if (response.has("uuid"))
+            return response.get("uuid").asText();
 
-    /**
-     * TEMP identifier until we switch to OpenMRS IDGEN module
-     */
-    private String generateIdentifier() {
-        // Example: 8-digit alphanumeric temporary ID
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        throw new RuntimeException("OpenMRS did not return patient UUID: " + response);
     }
 }

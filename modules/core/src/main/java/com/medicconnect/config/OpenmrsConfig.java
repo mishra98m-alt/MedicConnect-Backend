@@ -1,35 +1,50 @@
 package com.medicconnect.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 
-@Component
-@ConfigurationProperties(prefix = "openmrs")
+@Configuration
 public class OpenmrsConfig {
-    /**
-     * Example properties that will be read from:
-     * - application-openmrs.properties (when spring profile openmrs active)
-     * - or env vars like OPENMRS_BASE_URL, OPENMRS_USERNAME, etc (Spring relaxed binding)
-     */
+
+    @Value("${openmrs.base-url}")
     private String baseUrl;
+
+    @Value("${openmrs.fhir-base-url}")
+    private String fhirBaseUrl;
+
+    @Value("${openmrs.username}")
     private String username;
+
+    @Value("${openmrs.password}")
     private String password;
+
+    @Value("${openmrs.default-location-uuid}")
     private String defaultLocationUuid;
+
+    @Value("${openmrs.default-identifier-type-uuid}")
     private String defaultIdentifierTypeUuid;
-    // getters & setters
 
-    public String getBaseUrl() { return baseUrl; }
-    public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+    public String getBaseUrl() {
+        return baseUrl;
+    }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public String getFhirBaseUrl() {
+        return fhirBaseUrl;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getUsername() {
+        return username;
+    }
 
-    public String getDefaultLocationUuid() { return defaultLocationUuid; }
-    public void setDefaultLocationUuid(String defaultLocationUuid) { this.defaultLocationUuid = defaultLocationUuid; }
+    public String getPassword() {
+        return password;
+    }
 
-    public String getDefaultIdentifierTypeUuid() { return defaultIdentifierTypeUuid; }
-    public void setDefaultIdentifierTypeUuid(String defaultIdentifierTypeUuid) { this.defaultIdentifierTypeUuid = defaultIdentifierTypeUuid; }
+    public String getDefaultLocationUuid() {
+        return defaultLocationUuid;
+    }
+
+    public String getDefaultIdentifierTypeUuid() {
+        return defaultIdentifierTypeUuid;
+    }
 }

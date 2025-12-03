@@ -1,0 +1,24 @@
+{
+  "gender": "M",
+  "birthdate": "1990-01-01",
+  "birthdateEstimated": false,
+  "names": [
+    { "givenName": "John", "familyName": "Doe" }
+  ],
+  "addresses": [
+    {
+      "address1": "123 Main St",
+      "cityVillage": "New Delhi",
+      "stateProvince": "Delhi",
+      "country": "India"
+    }
+  ],
+  "identifiers": [
+    {
+      "identifier": "P123456",
+      "identifierType": "1a339fe2-14a6-4ade-8d41-ae0bf301f25a",
+      "location": "b1a8e617-c1f3-4f2f-b673-d8b61a1e44c2",
+      "preferred": true
+    }
+  ]
+}

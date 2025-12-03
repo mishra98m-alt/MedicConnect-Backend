@@ -11,87 +11,144 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.Objects;
 
 @Component
 public class OpenmrsApiClient {
+
     private static final Logger log = LoggerFactory.getLogger(OpenmrsApiClient.class);
+
     private final OkHttpClient client;
     private final ObjectMapper mapper = new ObjectMapper();
     private final OpenmrsConfig config;
-    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     public OpenmrsApiClient(OpenmrsConfig config) {
-        this.config = Objects.requireNonNull(config, "OpenmrsConfig must be provided");
+        this.config = config;
+
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(Duration.ofSeconds(10))
-                .readTimeout(Duration.ofSeconds(30))
-                .writeTimeout(Duration.ofSeconds(30))
-                .callTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(20))
+                .writeTimeout(Duration.ofSeconds(20))
+                .retryOnConnectionFailure(true)
                 .build();
     }
 
-    private String buildAuthHeader() {
+    // -------------------------------------------------------------
+    // AUTH HEADER
+    // -------------------------------------------------------------
+    private String authHeader() {
         String creds = config.getUsername() + ":" + config.getPassword();
         return "Basic " + Base64.getEncoder().encodeToString(creds.getBytes(StandardCharsets.UTF_8));
     }
 
-    private Request.Builder baseRequest(String url) {
-        return new Request.Builder()
-                .url(url)
-                .addHeader("Authorization", buildAuthHeader())
-                .addHeader("Accept", "application/json");
+    // -------------------------------------------------------------
+    // NORMALIZE OPENMRS URL
+    // Ensures correct format: baseUrl + /endpoint/
+    // -------------------------------------------------------------
+    private String normalizeUrl(String endpoint) {
+        String base = config.getBaseUrl();
+
+        if (base.endsWith("/"))
+            base = base.substring(0, base.length() - 1);
+
+        if (!endpoint.startsWith("/"))
+            endpoint = "/" + endpoint;
+
+        if (!endpoint.endsWith("/"))
+            endpoint = endpoint + "/";
+
+        return base + endpoint;
     }
 
-    private String fullUrl(String endpoint) {
-        String base = config.getBaseUrl();
-        if (base.endsWith("/") && endpoint.startsWith("/")) {
-            return base + endpoint.substring(1);
-        } else if (!base.endsWith("/") && !endpoint.startsWith("/")) {
-            return base + "/" + endpoint;
-        } else {
-            return base + endpoint;
+    // -------------------------------------------------------------
+    // BUILD REQUEST WITH REQUIRED HEADERS
+    // -------------------------------------------------------------
+    private Request buildRequest(String url, RequestBody body, String method) {
+
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .addHeader("Authorization", authHeader())
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json");  // REQUIRED FOR OPENMRS
+
+        switch (method) {
+            case "POST" -> builder.post(body);
+            case "GET" -> builder.get();
+            case "PUT" -> builder.put(body);
+            case "DELETE" -> builder.delete(body);
         }
+
+        return builder.build();
+    }
+
+    // -------------------------------------------------------------
+    // EXECUTE REQUEST
+    // -------------------------------------------------------------
+    private JsonNode execute(Request request, String url) throws Exception {
+        try (Response resp = client.newCall(request).execute()) {
+
+            if (!resp.isSuccessful()) {
+                String errorBody = resp.body() != null ? resp.body().string() : "NO_ERROR_BODY";
+
+                log.error("❌ OpenMRS API Error\nURL: {}\nStatus: {}\nResponse: {}",
+                        url, resp.code(), errorBody);
+
+                throw new RuntimeException("OpenMRS API failed: HTTP " + resp.code());
+            }
+
+            String result = resp.body() != null ? resp.body().string() : "{}";
+            return mapper.readTree(result);
+        }
+    }
+
+    // -------------------------------------------------------------
+    // PUBLIC OPENMRS API METHODS
+    // -------------------------------------------------------------
+    public JsonNode get(String endpoint) throws Exception {
+        String url = normalizeUrl(endpoint);
+        Request req = buildRequest(url, null, "GET");
+        return execute(req, url);
     }
 
     public JsonNode post(String endpoint, Object payload) throws Exception {
-        String url = fullUrl(endpoint);
-        String bodyJson = mapper.writeValueAsString(payload);
-
-        RequestBody body = RequestBody.create(bodyJson, JSON);
-        Request request = baseRequest(url)
-                .post(body)
-                .build();
-
-        log.debug("[OpenmrsApiClient] POST {} ({} bytes)", url, bodyJson.length());
-        try (Response resp = client.newCall(request).execute()) {
-            int code = resp.code();
-            String respBody = resp.body() != null ? resp.body().string() : "";
-            if (code < 200 || code >= 300) {
-                log.warn("[OpenmrsApiClient] Non-2xx response {}: {}", code, respBody);
-                throw new RuntimeException("OpenMRS POST failed: HTTP " + code + " - " + respBody);
-            }
-            if (respBody.isEmpty()) return mapper.createObjectNode();
-            return mapper.readTree(respBody);
-        } catch (Exception e) {
-            log.error("[OpenmrsApiClient] POST failed to {} : {}", url, e.getMessage());
-            throw e;
-        }
+        String url = normalizeUrl(endpoint);
+        RequestBody body = RequestBody.create(
+                mapper.writeValueAsString(payload),
+                MediaType.parse("application/json")
+        );
+        Request req = buildRequest(url, body, "POST");
+        return execute(req, url);
     }
 
-    public JsonNode get(String endpoint) throws Exception {
-        String url = fullUrl(endpoint);
-        Request request = baseRequest(url).get().build();
-        log.debug("[OpenmrsApiClient] GET {}", url);
-        try (Response resp = client.newCall(request).execute()) {
-            int code = resp.code();
-            String respBody = resp.body() != null ? resp.body().string() : "";
-            if (code < 200 || code >= 300) {
-                log.warn("[OpenmrsApiClient] GET non-2xx {}: {}", code, respBody);
-                throw new RuntimeException("OpenMRS GET failed: HTTP " + code + " - " + respBody);
-            }
-            if (respBody.isEmpty()) return mapper.createObjectNode();
-            return mapper.readTree(respBody);
+    public JsonNode put(String endpoint, Object payload) throws Exception {
+        String url = normalizeUrl(endpoint);
+        RequestBody body = RequestBody.create(
+                mapper.writeValueAsString(payload),
+                MediaType.parse("application/json")
+        );
+        Request req = buildRequest(url, body, "PUT");
+        return execute(req, url);
+    }
+
+    public JsonNode delete(String endpoint) throws Exception {
+        String url = normalizeUrl(endpoint);
+        Request req = buildRequest(url, RequestBody.create("", null), "DELETE");
+        return execute(req, url);
+    }
+
+    // -------------------------------------------------------------
+    // SESSION CHECK
+    // -------------------------------------------------------------
+    public JsonNode getSession() throws Exception {
+        return get("/session");
+    }
+
+    public boolean checkLogin() {
+        try {
+            JsonNode node = get("/session");
+            return node.get("authenticated").asBoolean();
+        } catch (Exception e) {
+            log.error("OpenMRS session check failed: {}", e.getMessage());
+            return false;
         }
     }
 }
