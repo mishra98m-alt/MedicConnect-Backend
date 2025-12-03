@@ -22,7 +22,7 @@ services:
       - openmrs_mysql_data:/var/lib/mysql
 
   # -------------------------------------------------------
-  # OpenMRS Server (Runs on 8081 external)
+  # OpenMRS Server
   # -------------------------------------------------------
   openmrs:
     image: openmrs/openmrs-reference-application-distro:2.12.0
@@ -36,20 +36,13 @@ services:
       DB_HOST: openmrs-mysql
       DB_USERNAME: root
       DB_PASSWORD: root
-
-      # IMPORTANT — REQUIRED to avoid migration failures
       DB_CREATE_TABLES: "true"
       DB_AUTO_UPDATE: "true"
-
-      # Recommended for stability
-      MODULE_WEB_ADMIN: "true"
-      DEBUG: "false"
-
     ports:
       - "8081:8080"
 
   # -------------------------------------------------------
-  # MedicConnect Database
+  # MedicConnect MySQL
   # -------------------------------------------------------
   mc_mysql:
     image: mysql:8.0
@@ -65,7 +58,7 @@ services:
       - mc_mysql_data:/var/lib/mysql
 
   # -------------------------------------------------------
-  # MedicConnect Backend
+  # MedicConnect Backend + WATCH MODE ❗
   # -------------------------------------------------------
   backend:
     build:
@@ -79,20 +72,24 @@ services:
       openmrs:
         condition: service_started
 
+    develop:
+      watch:
+        - action: sync
+          path: ./modules
+          target: /app/modules
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: rebuild
+          path: .
+
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mc_mysql:3306/medicconnect
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
 
-      # OpenMRS URLs INSIDE DOCKER (NOT localhost)
       OPENMRS_BASE_URL: http://openmrs:8080/openmrs/ws/rest/v1
       OPENMRS_FHIR_BASE: http://openmrs:8080/openmrs/ws/fhir2/R4
-
-      OPENMRS_USERNAME: admin
-      OPENMRS_PASSWORD: Admin123
-
-      OPENMRS_DEFAULT_LOCATION_UUID: b1a8e617-c1f3-4f2f-b673-d8b61a1e44c2
-      OPENMRS_DEFAULT_IDENTIFIER_TYPE_UUID: 1a339fe2-14a6-4ade-8d41-ae0bf301f25a
 
       SPRING_PROFILES_ACTIVE: openmrs
 

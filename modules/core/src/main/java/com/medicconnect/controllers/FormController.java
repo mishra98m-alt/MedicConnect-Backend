@@ -33,7 +33,7 @@ public class FormController {
      * Example: GET /api/forms/role-fields?role=Doctor
      */
     @GetMapping("/role-fields")
-    public ResponseEntity<List<FormField>> getRoleSpecificFields(@RequestParam String role) {
+    public ResponseEntity<List<FormField>> getRoleSpecificFields(@RequestParam("role") String role) {
         List<FormField> roleFields = fieldService.getFieldsForRole(role.trim());
         return ResponseEntity.ok(roleFields);
     }
