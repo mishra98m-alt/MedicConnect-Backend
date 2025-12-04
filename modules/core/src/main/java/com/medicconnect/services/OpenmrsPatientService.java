@@ -2,6 +2,7 @@ package com.medicconnect.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.medicconnect.api.OpenmrsApiClient;
 import com.medicconnect.config.OpenmrsConfig;
@@ -22,47 +23,72 @@ public class OpenmrsPatientService {
 
     public String createPatient(OpenmrsPatientPayload payload) throws Exception {
 
-        // -----------------------------------------------------
-        // Build PERSON JSON (OpenMRS format)
-        // -----------------------------------------------------
+        // -------------------------------
+        // BUILD PERSON OBJECT
+        // -------------------------------
         ObjectNode person = mapper.createObjectNode();
         person.put("gender", payload.getGender());
         person.put("birthdate", payload.getBirthdate());
         person.put("birthdateEstimated", payload.isBirthdateEstimated());
 
-        // Names --> [{"givenName": "...", "familyName": "..."}]
         person.set("names", mapper.valueToTree(payload.getNames()));
 
-        // Addresses --> [{"address1": "...", "cityVillage": "..."}]
-        person.set("addresses", mapper.valueToTree(payload.getAddresses()));
+        // -------------------------------
+        // CLEAN ADDRESS NODE (remove nulls)
+        // -------------------------------
+        if (payload.getAddresses() != null && !payload.getAddresses().isEmpty()) {
 
-        // -----------------------------------------------------
-        // IDENTIFIERS LIST — ensure preferred + correct fields
-        // -----------------------------------------------------
-        JsonNode identifiers = mapper.valueToTree(payload.getIdentifiers());
+            ArrayNode addrList = mapper.valueToTree(payload.getAddresses());
 
-        // Add "preferred" if missing
+            if (addrList.size() > 0) {
+                ObjectNode addr = (ObjectNode) addrList.get(0);
+
+                removeIfNull(addr, "address2");
+                removeIfNull(addr, "stateProvince");
+                removeIfNull(addr, "country");
+                removeIfNull(addr, "postalCode");
+            }
+
+            person.set("addresses", addrList);
+        }
+
+        // -------------------------------
+        // IDENTIFIERS
+        // -------------------------------
+        ArrayNode identifiers = mapper.valueToTree(payload.getIdentifiers());
+
         identifiers.forEach(id -> {
-            if (!id.has("preferred")) {
-                ((ObjectNode) id).put("preferred", true);
+            ObjectNode node = (ObjectNode) id;
+            if (!node.has("preferred") || node.get("preferred").isNull()) {
+                node.put("preferred", true);
             }
         });
 
-        // -----------------------------------------------------
-        // FINAL PATIENT OBJECT
-        // -----------------------------------------------------
+        // -------------------------------
+        // FINAL REQUEST
+        // -------------------------------
         ObjectNode request = mapper.createObjectNode();
         request.set("person", person);
         request.set("identifiers", identifiers);
 
-        // -----------------------------------------------------
-        // SEND TO OPENMRS (correct endpoint!)
-        // -----------------------------------------------------
-        JsonNode response = api.post("/patient/", request);
+        // -------------------------------
+        // CALL OPENMRS
+        // -------------------------------
+        JsonNode resp = api.post("/patient", request);
 
-        if (response.has("uuid"))
-            return response.get("uuid").asText();
+        if (resp.has("uuid")) {
+            return resp.get("uuid").asText();
+        }
 
-        throw new RuntimeException("OpenMRS did not return patient UUID: " + response);
+        throw new RuntimeException("OpenMRS did not return UUID → " + resp);
+    }
+
+    // -------------------------------------
+    // REMOVE NULL FIELDS (OpenMRS requirement)
+    // -------------------------------------
+    private void removeIfNull(ObjectNode node, String field) {
+        if (node.has(field) && node.get(field).isNull()) {
+            node.remove(field);
+        }
     }
 }

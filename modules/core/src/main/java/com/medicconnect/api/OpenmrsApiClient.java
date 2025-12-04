@@ -111,10 +111,20 @@ public class OpenmrsApiClient {
 
     public JsonNode post(String endpoint, Object payload) throws Exception {
         String url = normalizeUrl(endpoint);
+
+        // Convert payload to JSON string
+         String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload);
+
+        // 🔥 DEBUG LOG: Show URL + outgoing payload
+        log.error("\n================ OPENMRS REQUEST ================\n" +
+                "URL: {}\nPayload:\n{}\n" +
+                "====================================================",
+                url, json);
+
         RequestBody body = RequestBody.create(
-                mapper.writeValueAsString(payload),
-                MediaType.parse("application/json")
+                json, MediaType.parse("application/json")
         );
+
         Request req = buildRequest(url, body, "POST");
         return execute(req, url);
     }

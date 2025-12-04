@@ -2,9 +2,6 @@ version: "3.3"
 
 services:
 
-  # -------------------------------------------------------
-  # OpenMRS MySQL Database
-  # -------------------------------------------------------
   openmrs-mysql:
     image: mysql:5.7
     container_name: openmrs-mysql
@@ -12,25 +9,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: openmrs
-    command:
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --max_allowed_packet=64M
     ports:
       - "3308:3306"
     volumes:
       - openmrs_mysql_data:/var/lib/mysql
 
-  # -------------------------------------------------------
-  # OpenMRS Server
-  # -------------------------------------------------------
   openmrs:
     image: openmrs/openmrs-reference-application-distro:2.12.0
     container_name: openmrs
     restart: always
     depends_on:
-      openmrs-mysql:
-        condition: service_started
+      - openmrs-mysql
     environment:
       DB_DATABASE: openmrs
       DB_HOST: openmrs-mysql
@@ -41,9 +30,6 @@ services:
     ports:
       - "8081:8080"
 
-  # -------------------------------------------------------
-  # MedicConnect MySQL
-  # -------------------------------------------------------
   mc_mysql:
     image: mysql:8.0
     container_name: mc_mysql
@@ -56,45 +42,6 @@ services:
       - "3307:3306"
     volumes:
       - mc_mysql_data:/var/lib/mysql
-
-  # -------------------------------------------------------
-  # MedicConnect Backend + WATCH MODE ❗
-  # -------------------------------------------------------
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: medicconnect-backend
-    restart: always
-    depends_on:
-      mc_mysql:
-        condition: service_started
-      openmrs:
-        condition: service_started
-
-    develop:
-      watch:
-        - action: sync
-          path: ./modules
-          target: /app/modules
-        - action: sync
-          path: ./src
-          target: /app/src
-        - action: rebuild
-          path: .
-
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mc_mysql:3306/medicconnect
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-
-      OPENMRS_BASE_URL: http://openmrs:8080/openmrs/ws/rest/v1
-      OPENMRS_FHIR_BASE: http://openmrs:8080/openmrs/ws/fhir2/R4
-
-      SPRING_PROFILES_ACTIVE: openmrs
-
-    ports:
-      - "8080:8080"
 
 volumes:
   mc_mysql_data:
