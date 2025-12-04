@@ -9,6 +9,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: openmrs
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     ports:
       - "3308:3306"
     volumes:
@@ -38,6 +41,9 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: medicconnect
       TZ: Asia/Kolkata
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     ports:
       - "3307:3306"
     volumes:
